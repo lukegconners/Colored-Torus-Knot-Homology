@@ -1,0 +1,262 @@
+# Required functions on permutations
+
+def perm_trace(sigma):
+    # Given a permutation sigma in S_n, computes the trace Tr_n(sigma)
+    # Inputs: A permutation sigma, given as a dictionary
+    domain = list(sigma.keys())
+    n = len(domain)
+    domain.pop()
+    tr_sig = {}
+    if n == 1:
+        return tr_sig
+    else:
+        for j in domain:
+            if sigma[j] != n:
+                tr_sig[j] = sigma[j]
+            else:
+                tr_sig[j] = sigma[n]
+    return tr_sig
+
+def scooch(sigma):
+    # Given a permuation sigma in S_n, returns the permutation
+    # e \sqcup sigma in S_{n + 1}
+    # Input: a permutation sigma, given as a dictionary
+    domain = list(sigma.keys())
+    new_sig = {1: 1}
+    for j in domain:
+        new_sig[j + 1] = sigma[j] + 1
+    return new_sig
+
+def make_pre_cross(l):
+    # Builds the permutation corresponding to a cabled positive crossing of
+    # 1 strand over l - 1 strands
+    # Input: A positive integer l
+    cross = {1 : l}
+    for j in range(l - 1):
+        cross[j + 2] = j + 1
+    return cross
+
+def make_post_cross(l):
+    # Builds the permutation corresponding to a cabled positive crossing of
+    # l - 1 strands over 1 strand
+    # Input: A positive integer l
+    cross = {l : 1}
+    for j in range(1,l):
+        cross[j] = j + 1
+    return cross
+
+def pre_cross(sigma):
+    # Builds the permutation sigma*pre_cross
+    # Input: A permutation sigma as above
+    domain = list(sigma.keys())
+    l = len(domain)
+    cross = make_pre_cross(l)
+    new_sig = {}
+    for j in domain:
+        new_sig[j] = sigma[cross[j]]
+    return new_sig
+
+def post_cross(sigma):
+    # Builds the permutation post_cross*sigma
+    # Input: A permutation sigma as above
+    domain = list(sigma.keys())
+    l = len(domain)
+    cross = make_post_cross(l)
+    new_sig = {}
+    for j in domain:
+        new_sig[j] = cross[sigma[j]]
+    return new_sig
+
+
+
+
+# Implementation of main recursion from [Con23]
+
+# Defining the polynomial ring over Q with variables A,Q,T
+R.<a,q,t> = QQ[]
+A = a*q**(-2)
+Q = q**2
+T = q**(-2) * t**2
+
+def unlink_inv(k):
+    # Gives the unlink invariant ((1 + A)/((1 - Q)(1 - T)))**k
+    # of a k-strand (uncolored) unlink
+    # Input: Non-negative integer k
+    return ((1 + A)/((1 - Q)*(1 - T)))**k
+
+# Defining the recursion
+
+def poly_rec(v, w, sigma, D = {}):
+    # Returns the rational function p_sigma(v, w) in
+    # the variables A, Q, T
+    # Inputs: v a binary string of length l + m with l 1's
+    #         w a binary string of length l + n with l 1's
+    #         sigma a permutation in S_l, given as a dictionary
+    #         D a dictionary recording memoized values
+
+    # Making sigma into a tuple so that it's hashable
+    sigma_hashable = tuple(sigma.values())
+
+    # Checking whether we've already memoized this input
+    if (v, w, sigma_hashable) in D:
+        return D[(v, w, sigma_hashable)]
+
+    else:
+
+        # Grabbing some notation
+        l = v.count('1')
+        m = v.count('0')
+        n = w.count('0')
+
+        # Rule 1
+        if len(w) == 0:
+            result = unlink_inv(m)
+        elif len(v) == 0:
+            result = unlink_inv(n)
+        else:
+            v_last = v[-1]
+            w_last = w[-1]
+
+            # Rule 2
+            if l == 1 and (v_last,w_last) == ('1','1'):
+                v_new = v[:-1]
+                w_new = w[:-1]
+                sigma_new = {}
+                result = unlink_inv(1) * poly_rec(v_new, w_new, sigma_new)
+
+            # Rules 3 and 4
+            elif (v_last,w_last) == ('1','1'):
+                v_new = v[:-1]
+                w_new = w[:-1]
+                sigma_new = perm_trace(sigma)
+
+                # Checking whether sigma[l] = l, in which case we
+                # apply Rule 3, or not, in which case we apply Rule 4
+
+                if sigma[l] == l:
+                    result = ((Q**(l - 1) + A)/(1 - Q))*poly_rec(v_new, w_new, sigma_new)
+                else:
+                    result = (Q**(l - 1) + A)*poly_rec(v_new, w_new, sigma_new)
+
+            # Rule 5
+            elif (v_last,w_last) == ('0','1'):
+                v_new = v[:-1]
+                w_new = '1' + w[:-1]
+                sigma_new = pre_cross(sigma)
+                result = poly_rec(v_new, w_new, sigma_new)
+
+            # Rule 6
+            elif (v_last,w_last) == ('1','0'):
+                v_new = '1' + v[:-1]
+                w_new = w[:-1]
+                sigma_new = post_cross(sigma)
+                result = poly_rec(v_new, w_new, sigma_new)
+
+            # Rule 7
+            elif l == 0:
+                v_new = '1' + v[:-1]
+                w_new = '1' + w[:-1]
+                sigma_new = {1: 1}
+                result = poly_rec(v_new, w_new, sigma_new)
+
+            # Rule 8
+            elif l >= 1 and (v_last,w_last) == ('0','0'):
+                v_new_1 = '1' + v[:-1]
+                w_new_1 = '1' + w[:-1]
+                sigma_new_1 = scooch(sigma)
+                p1 = poly_rec(v_new_1, w_new_1, sigma_new_1)
+
+                v_new_2 = '0' + v[:-1]
+                w_new_2 = '0' + w[:-1]
+                p2 = poly_rec(v_new_2, w_new_2, sigma)
+
+                result = Q**(-l) * p1 + Q**(-l) * T * p2
+
+
+    # Memoizing result in D
+    D[(v,w,sigma_hashable)] = result
+    return result
+
+
+
+
+
+# Recovering link homology values from the recursion
+
+def unreduced_hhy(m, n, k):
+    # Computes unreduced HHY of the k-colored T(m, n) torus knot, colored with finite y-ified column projector
+    # Inputs: m, n, k positive integers with gcd(m, n) = 1
+
+    # Grabbing the appropriate strings
+    v = '1'*k + '0'*k*(m - 1)
+    w = '1'*k + '0'*k*(n - 1)
+
+    # Building identity permutation
+    sigma = {}
+    for j in range(k):
+        sigma[j + 1] = j + 1
+
+    # Plugging into recursion
+    return poly_rec(v, w, sigma)
+
+# By Theorem 1.1 of [Con24], can get intrinsically colored homology
+# by dividing by [k]! and accounting for reduced/unreduced projectors
+
+def quantum_int(k):
+    # Computes [k]
+    # Input: Positive integer k
+    return (q**k - q**(-k))/(q - q**(-1))
+
+def quantum_fac(k):
+    # Computes [k]!
+    # Input: Positive integer k
+    ans = 1
+    for j in range(k):
+        ans = ans*quantum_int(j + 1)
+    return ans
+
+def unreduced_hhh_intr(m, n, k):
+    # Computes unreduced, intrinsically-colored homology k-colored T(m, n) torus knot
+    # Inputs: m, n, k positive integers with gcd(m, n) = 1
+
+    return (1 - T) * unreduced_hhy(m, n, k)/quantum_fac(k) # Factor of (1 - T) comes from passing to reduced projectors
+
+def hhh_intr_unknot(k):
+    # Computes the intrinsic k-colored unknot homology by hand using known formula
+    # Input: positive integer k
+
+    ans = 1
+    for j in range(k):
+        ans = ans*(1 + a*q**(-2*(j + 1)))/(1 - q**(2*(j + 1)))
+    return ans
+
+# Passing to reduced homology - see [Wed19, Remark 3.43]
+
+def reduced_hhh_intr(m, n, k):
+    # Computes reduced, intrinsically-colored homology of k-colored T(m, n) torus knot
+    # Inputs: m, n, k positive integers with gcd(m, n) = 1
+
+    return unreduced_hhh_intr(m, n, k)/hhh_intr_unknot(k)
+
+# Computing total rank by setting a = q = t = 1
+
+def hhh_rank(m, n, k):
+    # Computes the total rank of reduced, intrinsically-colored homology
+    # of k-colored T(m, n)
+    # Inputs: m, n, k as above
+
+    return reduced_hhh_intr(m, n, k)(1, 1, 1)
+
+
+
+
+
+# Run computations here. Examples:
+
+# print(unreduced_hhy(2,3,5)) # 5-colored T(2, 3)
+# print()
+# print(unreduced_hhh_intr(3,5,2)) # 2-colored T(3, 5)
+# print()
+# print(reduced_hhh_intr(2,5,4)) # 4-colored T(2, 5)
+# print()
+# print(hhh_rank(5,8,2)) # 2-colored T(5, 8)
