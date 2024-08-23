@@ -53,5 +53,8 @@ longer runtime is available upon request.
 - [Ras15]: J. Rasmussen, "Some differentials on Khovanov-Rozansky homology". Geometric Topology, 19(6):3031–3104, 2015. arXiv:0607544.
 - [Wed19]: P. Wedrich, "Exponential growth of colored HOMFLY-PT homology". Advances in Mathematics, 2019. arXiv: 1602.02769.
 
+## General Comments
+
 If you find this program helpful or wish to report bugs or suggest improvements,
-please email the author at lconners [at] live [dot] unc [dot] edu.
+please email the author at lconners [at] live [dot] unc [dot] edu. We especially
+welcome any and all advice on best practices in using GitHub!
