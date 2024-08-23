@@ -12,6 +12,8 @@ projector-colored homology, then uses the equivalence proven in Theorem 1.1 of [
 to convert to unreduced, intrinsically-colored homology, then divides by the unknot
 invariant to (conjecturally**, from [Wed19], Remark 3.43) convert to reduced homology.
 
+We work in the Sage programming language. All writing and testing was performed in CoCalc.
+
 ## Documentation:
 The four main functions available in this program are unreduced_hhy(m, n, k),
 unreduced_hhh_intr(m, n, k), reduced_hhh_intr(m, n, k), and
